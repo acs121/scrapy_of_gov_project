@@ -11,7 +11,7 @@ def url_get(geturl):
     url=geturl
     try:
         kv={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; WOW64) Chrome/57.0.2987.98 Safari/537.36 LBBROWSER'}
-        requests.get(url,headers=kv)
+        requests.get(url,headers=kv,timeout=2)
         return url
     except:
         return 0
@@ -21,7 +21,7 @@ def url_get(geturl):
 def spiderPage(url):
     try:
         kv = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) Chrome/57.0.2987.98 Safari/537.36 LBBROWSER'}
-        r=requests.get(url,headers=kv,timeout=0.1)
+        r=requests.get(url,headers=kv,timeout=2)
         r.encoding=r.apparent_encoding
         pagetext=r.text
         pagelinks=re.findall(r'(?<=<a href=\").*?(?=\")|(?<=href=\').*?(?=\')', pagetext)
@@ -31,19 +31,21 @@ def spiderPage(url):
 
 
 #对爬取的url去重，传入的参数为列表形式的Url集合,返回的是符合条件的URL集合
-def url_filtrate(pagelinks):
-    # 去除不是以要爬取网站开头的url,如跳转的广告等
+def url_filtrate(pagelinks,officialWeb):
+    # 设置链接匹配格式
     same_target_url = []
+    # 只要官网下的网站
+    pattern1=re.compile("./")
+    pattern2=re.compile("/")
     for l in pagelinks:
-        if re.findall(r'blog.csdn.net/\w+/article/details/\d+', l):
-            # 根据对网页的分析添加筛选条件,过滤掉系统推荐的博文链接
-            if re.findall(r'blockchain_lemon', l):
-                pass
-            # 过滤掉广告链接
-            elif re.findall(r'passport', l):
-                pass
-            else:
-                same_target_url.append(l)
+        if pattern1.match(l)!=None:
+            link=officialWeb+l[2:]
+            same_target_url.append(link)
+        elif pattern2.match(l)!=None:
+            link=officialWeb+l[1:]
+            same_target_url.append(link)
+        else:
+            pass
     # 去除重复url
     unrepect_url = []
     for l in same_target_url:
@@ -107,7 +109,7 @@ class Spider():
         self.linkQuence.addunvisitedurl(url)
 
     #爬虫
-    def crawler(self,urlcount):
+    def crawler(self,urlcount,officialWeb):
         #子页面过多，为测试方便加入循环控制子页面数量
         x=1
         while x<=urlcount:
@@ -115,22 +117,29 @@ class Spider():
                 print ("now from %d url  craw" % (x-1))
             #从未访问的列表中pop一个
             visitedurl=self.linkQuence.unvisitedurldequence()
-            if url_get(visitedurl)==0:
-                continue
+            #简单处理url问题
             if visitedurl is None or visitedurl =='':
                 continue
+            if visitedurl in self.linkQuence.visited:
+                continue
+            if url_get(visitedurl)==0:
+                continue
+            
             print visitedurl
+            
             #爬取该url页面中所有的链接
             initial_links=spiderPage(visitedurl)
+            # print initial_links
             if initial_links==0:
                 continue
             #筛选出合格的链接
-            # right_links = url_filtrate(initial_links)
+            right_links = url_filtrate(initial_links,officialWeb)
+            # print right_links
             #将该url放到访问过的url队列中
             self.linkQuence.addvisitedurl(visitedurl)
             
             #将筛选出的链接放到未访问队列中
-            for link in initial_links:
+            for link in right_links:
                 self.linkQuence.addunvisitedurl(link)
             x+=1
         print("over total %durls" % (x-2))
@@ -148,8 +157,8 @@ def writeinfile(list):
     print("write over total %d urls" %(x-1))
 
 #启动爬虫
-url=url_get('http://www.pingshun.gov.cn/')
+url=url_get('http://www.qdh.gov.cn/')
 spider=Spider(url)
-urllist=spider.crawler(10)
+urllist=spider.crawler(100,'http://www.qdh.gov.cn/')
 # writeinfile(urllist)
 
