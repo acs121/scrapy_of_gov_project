@@ -2,9 +2,44 @@
 
 import requests
 import re
+import checkPage
+from threading import Thread
+import time
 
 from requests import ReadTimeout,ConnectionError
-# from __future__ import print_function
+
+#时间限制
+class TimeoutException(Exception):
+  pass
+ThreadStop = Thread._Thread__stop
+def timelimited(timeout):
+  def decorator(function):
+    def decorator2(*args,**kwargs):
+      class TimeLimited(Thread):
+        def __init__(self,_error= None,):
+          Thread.__init__(self)
+          self._error = _error
+        def run(self):
+          try:
+            self.result = function(*args,**kwargs)
+          except Exception,e:
+            self._error = str(e)
+        def _stop(self):
+          if self.isAlive():
+            ThreadStop(self)
+      t = TimeLimited()
+      t.start()
+      t.join(timeout)
+      if isinstance(t._error,TimeoutException):
+        t._stop()
+        raise TimeoutException('timeout for %s' % (repr(function)))
+      if t.isAlive():
+        t._stop()
+        raise TimeoutException('timeout for %s' % (repr(function)))
+      if t._error is None:
+        return t.result
+    return decorator2
+  return decorator
 
 #验证输入的url是否可正常链接
 def url_get(geturl):
@@ -18,6 +53,7 @@ def url_get(geturl):
     
 
 #根据传入的URL参数进行爬取，以列表形式返回
+
 def spiderPage(url):
     try:
         kv = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) Chrome/57.0.2987.98 Safari/537.36 LBBROWSER'}
@@ -29,7 +65,6 @@ def spiderPage(url):
     except (ConnectionError, ReadTimeout):
         return 0
 
-
 #对爬取的url去重，传入的参数为列表形式的Url集合,返回的是符合条件的URL集合
 def url_filtrate(pagelinks,officialWeb):
     # 设置链接匹配格式
@@ -37,13 +72,18 @@ def url_filtrate(pagelinks,officialWeb):
     # 只要官网下的网站
     pattern1=re.compile("./")
     pattern2=re.compile("/")
+    #不要图片、pdf、doc等链接
+    pattern3=re.compile("jpg|pdf|doc|mp3|png|xls|ppt|zip|rar")
     for l in pagelinks:
-        if pattern1.match(l)!=None:
-            link=officialWeb+l[2:]
-            same_target_url.append(link)
-        elif pattern2.match(l)!=None:
-            link=officialWeb+l[1:]
-            same_target_url.append(link)
+        if pattern3.search(l)==None:
+            if pattern1.match(l)!=None:
+                link=officialWeb+l[1:]
+                same_target_url.append(link)
+            elif pattern2.match(l)!=None:
+                link=officialWeb+l[0:]
+                same_target_url.append(link)
+            else:
+                pass
         else:
             pass
     # 去除重复url
@@ -112,24 +152,31 @@ class Spider():
     def crawler(self,urlcount,officialWeb):
         #子页面过多，为测试方便加入循环控制子页面数量
         x=1
-        while x<=urlcount:
+        #无效网页计数
+        count=0
+        while x<=urlcount and count<10:
             if x>1:
                 print ("now from %d url  craw" % (x-1))
             #从未访问的列表中pop一个
             visitedurl=self.linkQuence.unvisitedurldequence()
+            # x+=1
             #简单处理url问题
+            print visitedurl
             if visitedurl is None or visitedurl =='':
+                count+=1
                 continue
             if visitedurl in self.linkQuence.visited:
                 continue
             if url_get(visitedurl)==0:
+                count+=1
                 continue
-            
-            print visitedurl
-            
+            count=0
+            #判断是否是需要的页面
+            checkPage.checkMain(visitedurl)
+            print 'pass'
             #爬取该url页面中所有的链接
             initial_links=spiderPage(visitedurl)
-            # print initial_links
+            print initial_links
             if initial_links==0:
                 continue
             #筛选出合格的链接
@@ -137,7 +184,6 @@ class Spider():
             # print right_links
             #将该url放到访问过的url队列中
             self.linkQuence.addvisitedurl(visitedurl)
-            
             #将筛选出的链接放到未访问队列中
             for link in right_links:
                 self.linkQuence.addunvisitedurl(link)
@@ -145,20 +191,13 @@ class Spider():
         print("over total %durls" % (x-2))
         return self.linkQuence.visited
 
-#将爬取到的子链接全部写入本地文件
-def writeinfile(list):
-    #第一个不写，从[1]开始
-    x=1
-    for url in list[1:]:
-        urlsfile=open('./urls.txt','a',encoding='utf-8')
-        urlsfile.write(url+"\n")
-        x+=1
-    urlsfile.close()
-    print("write over total %d urls" %(x-1))
-
 #启动爬虫
-url=url_get('http://www.qdh.gov.cn/')
-spider=Spider(url)
-urllist=spider.crawler(100,'http://www.qdh.gov.cn/')
-# writeinfile(urllist)
+def startCrawer(weburl,num):
+    start = time.clock()
+    url=url_get(weburl)
+    spider=Spider(url)
+    urllist=spider.crawler(num,weburl)
+    elapsed = (time.clock() - start)
+    print("Time used:",elapsed)
 
+startCrawer('http://www.hnhx.gov.cn',1000)
