@@ -53,7 +53,7 @@ def url_get(geturl):
     
 
 #根据传入的URL参数进行爬取，以列表形式返回
-
+@timelimited(2)
 def spiderPage(url):
     try:
         kv = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; WOW64) Chrome/57.0.2987.98 Safari/537.36 LBBROWSER'}
@@ -70,18 +70,31 @@ def url_filtrate(pagelinks,officialWeb):
     # 设置链接匹配格式
     same_target_url = []
     # 只要官网下的网站
+    #以./开头
     pattern1=re.compile("./")
+    #以/开头，不要//开头
     pattern2=re.compile("/")
+    pattern5=re.compile("//")
+    #如果以http开头了就需要求网址包含官网
+    pattern4=re.compile(officialWeb)
+    #以直接字母开头，不能是http
+    pattern6=re.compile('[a-z]',re.I)
+    pattern7=re.compile('http',re.I)
     #不要图片、pdf、doc等链接
-    pattern3=re.compile("jpg|pdf|doc|mp3|png|xls|ppt|zip|rar")
+    pattern3=re.compile("jpg|pdf|doc|mp3|png|xls|ppt|zip|rar|xml")
     for l in pagelinks:
-        if pattern3.search(l)==None:
-            if pattern1.match(l)!=None:
+        if pattern3.search(l,re.I)==None:
+            if pattern1.match(l,re.I)!=None:
                 link=officialWeb+l[1:]
                 same_target_url.append(link)
-            elif pattern2.match(l)!=None:
+            elif pattern2.match(l)!=None and pattern5.match(l)==None:
                 link=officialWeb+l[0:]
                 same_target_url.append(link)
+            elif pattern6.match(l)!=None and pattern7.match(l)==None:
+                link=officialWeb+'/'+l
+                same_target_url.append(link)
+            elif pattern4.search(l)!=None:
+                same_target_url.append(l)
             else:
                 pass
         else:
@@ -122,6 +135,7 @@ class linkQuence:
         try:
             return self.unvisited.pop()
         except:
+            print u"队列中没有链接"
             return None
     
     #添加url到未访问队列中
@@ -153,8 +167,7 @@ class Spider():
         #子页面过多，为测试方便加入循环控制子页面数量
         x=1
         #无效网页计数
-        count=0
-        while x<=urlcount and count<10:
+        while x<=urlcount:
             if x>1:
                 print ("now from %d url  craw" % (x-1))
             #从未访问的列表中pop一个
@@ -163,20 +176,20 @@ class Spider():
             #简单处理url问题
             print visitedurl
             if visitedurl is None or visitedurl =='':
-                count+=1
-                continue
+                break
             if visitedurl in self.linkQuence.visited:
                 continue
             if url_get(visitedurl)==0:
-                count+=1
                 continue
-            count=0
             #判断是否是需要的页面
             checkPage.checkMain(visitedurl)
-            print 'pass'
             #爬取该url页面中所有的链接
-            initial_links=spiderPage(visitedurl)
-            print initial_links
+            try:
+                initial_links=spiderPage(visitedurl)
+            except TimeoutException as e:
+                print u"超时不要了"
+                continue
+            # print initial_links
             if initial_links==0:
                 continue
             #筛选出合格的链接
@@ -200,4 +213,4 @@ def startCrawer(weburl,num):
     elapsed = (time.clock() - start)
     print("Time used:",elapsed)
 
-startCrawer('http://www.hnhx.gov.cn',1000)
+startCrawer('http://spb.cq.gov.cn',1000)

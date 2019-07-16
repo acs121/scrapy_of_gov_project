@@ -56,26 +56,35 @@ class searchPage:
     def matchContent(self):
         try:
             url=self.baseUrl
-            request=urllib2.Request(url)
+            #爬取超时就不要了
             try:
+                request=urllib2.Request(url)
                 response=urllib2.urlopen(request,timeout=3)
             except Exception,e:
                 return 0
             string=response.read()
-            htmlTitle = re.search(r"<title>.*?</title>", string.decode('utf-8'),re.I|re.S)
-            # print htmlTitle
+            try:
+              htmlTitle = re.search(r"<title>.*?</title>", string.decode('utf-8'),re.I|re.S)
+            except:
+              print u"标题匹配有问题,暂且叫不符合"
+              return 0
             user_agent = 'Mozilla/4.0 (compatible; MSIE 5.5; Windows NT)'
             headers = { 'User-Agent' : user_agent }
             #匹配“xx年财政预算执行情况和xx年财政预算”
             title="县.*?年.*?预算执行情况|区.*?年.*?预算执行情况|市.*?年.*?预算执行情况"
-            # title="重庆市"
             pattern_title = re.compile(title)
             match_title=pattern_title.findall(string)
-            # print type(match_title)
+            # print len(match_title)
             # 页面存在一次题目
             if len(match_title)!=0:
                 if len(match_title)>=2:
                     return htmlTitle.group()[7:-8]
+                #匹配预算信息公开
+                param_three="预.*?算信息公开|预.*?算公开信息"
+                pattern_three=re.compile(param_three)
+                match_three=pattern_three.findall(string)
+                if len(match_three)!=0:
+                  return htmlTitle.group()[7:-8]
                 #匹配“xx年财政预算执行情况”大于等于2次
                 param_one=u"(预算执行情况+)"
                 pattern_one = re.compile(param_one)
@@ -104,7 +113,10 @@ def save_pdf(htmls, file_name):
     #添加了环境变量还是搞不成，只有代码找位置
     path_wk = r'D:\wkhtmltox\bin\wkhtmltopdf.exe' #安装位置
     config = pdfkit.configuration(wkhtmltopdf = path_wk)
-    pdfkit.from_url(htmls, file_name,configuration=config)
+    try:
+      pdfkit.from_url(htmls, file_name,configuration=config)
+    except:
+      print u"pdf转换有问题"
 
 #爬虫开始
 @timelimited(10)
@@ -114,11 +126,12 @@ def start(url):
     fileTitle=sp.matchContent()
     if fileTitle!=0 and fileTitle!=None:
         #由于pdfkit直接生成中文名出错，所以生产后改名字
-        print "1"
         fileName='acs.pdf'
-        save_pdf(url,fileName)
-        
-        os.rename('acs.pdf',fileTitle+'.pdf') 
+        try:
+          save_pdf(url,fileName)
+          os.rename('acs.pdf',fileTitle+'.pdf')
+        except:
+          os.rename('acs.pdf',fileTitle+'.pdf')
     else:
         print u'页面不符合'
     
@@ -129,7 +142,7 @@ def checkMain(url):
     except TimeoutException as e:
         print u"超时不要了"
 
-checkMain('http://www.wucheng.gov.cn/n37855206/n38016159/n38016302/n38026231/n38275098/c23632494/content.html')
+# checkMain('http://www.cqna.gov.cn/Item/89067.aspx')
 
 
 
