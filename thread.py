@@ -15,7 +15,9 @@ from selenium.webdriver.common.by import By
 chrome_options = webdriver.ChromeOptions()
 chrome_options.add_argument("--headless")
 chrome_options.add_argument('log-level=3')
-prefs = {"profile.managed_default_content_settings.images":2}
+prefs = {"profile.managed_default_content_settings.images":2,
+"download.default_directory": 'F:\\a\python\selenium',
+"download.prompt_for_download": False}
 chrome_options.add_experimental_option("prefs",prefs)
 driver = webdriver.Chrome(chrome_options=chrome_options)
 
@@ -153,7 +155,7 @@ def getPageLink(url,officialWeb):
 #页面检查
 def checkPage(pageContent):
   #匹配主要字段
-  param_one=u"县.*?年.*?预算执行情况.*?预算|区.*?年.*?预算执行情况.*?预算|市.*?年.*?预算执行情况.*?预算"
+  param_one=u"县.*?2018年.*?预算执行情况.*?2019年.*?预算|区.*?2018年.*?预算执行情况.*?2019年.*?预算|市.*?2018年.*?预算执行情况.*?2019年.*?预算"
   pattern_one = re.compile(param_one)
   match_one=pattern_one.findall(driver.page_source)
   #主要字段只有一次，匹配更多字段
@@ -193,8 +195,8 @@ def Spider(officialWeb):
       visitUrl=linkQuence.get(block=False)
       if visitUrl in visitedLink:
         continue
-      # addnum()
       else:
+        addnum()
         addLinkToList(visitUrl)
         print visitUrl
         try:
@@ -204,7 +206,7 @@ def Spider(officialWeb):
   except:
     fo = open("url.txt", "w+")
     for link in visitedLink:
-      fo.writelines(link+'/n')
+      fo.writelines(link+'\n')
     fo.close()
     print u"链接访问结束"
 
@@ -237,6 +239,6 @@ if __name__ == '__main__':
   #创建一把同步锁
   numlock = threading.Lock() 
   listlock= threading.Lock() 
-  start('http://guokunjin.cn',10)
+  start('http://guokunjin.cn',5)
 
 
