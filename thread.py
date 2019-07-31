@@ -1,8 +1,7 @@
 #-*-  coding:utf-8 -*-
-import sys,os
+import sys,os,re,Queue,pdfkit,time
 reload(sys)
 sys.setdefaultencoding('utf-8')
-import re,Queue,pdfkit,time
 from PyPDF2 import PdfFileMerger
 #多线程
 from threading import Thread
@@ -10,8 +9,9 @@ import threading
 #使用selenium
 from selenium import webdriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver import ActionChains
 
-#设置浏览器
+#设置chrome浏览器
 chrome_options = webdriver.ChromeOptions()
 chrome_options.add_argument("--headless")
 chrome_options.add_argument('log-level=3')
@@ -20,6 +20,12 @@ prefs = {"profile.managed_default_content_settings.images":2,
 "download.prompt_for_download": False}
 chrome_options.add_experimental_option("prefs",prefs)
 driver = webdriver.Chrome(chrome_options=chrome_options)
+#设置firefox
+profile_directory='rust_mozprofile.cY4kYRxaXVcZ'
+profile=webdriver.FirefoxProfile(profile_directory)
+profile.set_preference('browser.download.folderList', 2)
+profile.set_preference('browser.download.dir', os.getcwd())
+profile.set_preference('browser.helperApps.neverAsk.saveToDisk', 'application/zip/doc')
 
 #链接队列
 linkQuence=Queue.Queue()
@@ -90,9 +96,9 @@ def url_filtrate(pagelinks,officialWeb):
     pattern6=re.compile('[a-z]',re.I)
     pattern7=re.compile('http',re.I)
     #不要图片、pdf、doc等链接
-    pattern3=re.compile("javascript|jpg|pdf|doc|mp3|png|xls|ppt|zip|rar|xml|css|js",re.I)
+    pattern3=re.compile("javascript|jpg|pdf|doc|mp3|png|xls|ppt|zip|rar|xml|css|js|gif|jpeg",re.I)
     #不要JavaScript字段
-    pattern8=re.compile("javascript|#")
+    pattern8=re.compile("javascript|#|2018|2017|2016|2015|2014|2013|2012|2011|2010|2009|2008|2007|2006|2005|2004|2003")
     for link in pagelinks:
       try:
         l=link.get_attribute('href')
@@ -126,7 +132,7 @@ def url_filtrate(pagelinks,officialWeb):
 
 
 #链接搜索
-@timelimited(7)
+@timelimited(15)
 def getPageLink(url,officialWeb):
   try:
     #隐性等待
@@ -139,44 +145,58 @@ def getPageLink(url,officialWeb):
     for link in right_links:
       linkQuence.put(link)
     #检查页面内容
-    if checkPage(driver.page_source)==1:
-      try:
-        save_pdf(url,'acs.pdf')
-        os.rename('acs.pdf',driver.title+'.pdf')
-      except:
-        os.rename('acs.pdf',driver.title+'.pdf')
-        print u"pdf转换出错"
-    else:
-      print u"页面不符合"
+    checkPage(driver.page_source,url)
+    
   except:
     print u"获取页面失败"
 
 
 #页面检查
-def checkPage(pageContent):
+def checkPage(pageContent,url):
   #匹配主要字段
   param_one=u"县.*?2018年.*?预算执行情况.*?2019年.*?预算|区.*?2018年.*?预算执行情况.*?2019年.*?预算|市.*?2018年.*?预算执行情况.*?2019年.*?预算"
   pattern_one = re.compile(param_one)
-  match_one=pattern_one.findall(driver.page_source)
+  match_one=pattern_one.findall(pageContent)
   #主要字段只有一次，匹配更多字段
   pattern_two=re.compile(u"一般公共预算")
-  match_two=pattern_two.findall(driver.page_source)
+  match_two=pattern_two.findall(pageContent)
   pattern_three=re.compile(u"预算草案")
-  match_three=pattern_three.findall(driver.page_source)
+  match_three=pattern_three.findall(pageContent)
   #匹配信息公开类型
   pattern_four=re.compile(u"预.*?算信息公开|预.*?算公开信息")
-  match_four=pattern_four.findall(driver.page_source)
+  match_four=pattern_four.findall(pageContent)
   if len(match_one)!=0:
       if len(match_one)>=2:
-          return 1
+          downloadfile(url)
       elif len(match_two)!=0 and len(match_three)!=0:
-          return 1
+          downloadfile(url)
       elif len(match_four)!=0:
-          return 1
+          downloadfile(url)
       else:
-          return 0
+          print u"页面不符合"
   else:
-      return 0
+      print u"页面不符合"
+
+#firefox下载
+def downloadfile(url):
+  #匹配主要字段
+  param_one=u"县.*?2018年.*?预算执行情况.*?2019年.*?预算|区.*?2018年.*?预算执行情况.*?2019年.*?预算|市.*?2018年.*?预算执行情况.*?2019年.*?预算"
+  pattern_one = re.compile(param_one)
+  browser = webdriver.Firefox(profile,executable_path="geckodriver.exe",firefox_binary="Mozilla Firefox/firefox.exe")
+  #隐性等待
+  browser.implicitly_wait(3)
+  browser.get(url)
+  target_list=browser.find_elements_by_tag_name("a")
+  for target in target_list:
+    text=target.get_attribute('textContent')
+    if pattern_one.search(text)!=None:
+      try:
+        ActionChains(browser).move_to_element(target).click(target).perform()
+      except:
+        js="var q=document.documentElement.scrollTop=100000"  
+        browser.execute_script(js)  
+        time.sleep(3)
+        ActionChains(browser).move_to_element(target).click(target).perform()
 
 #pdf转换
 def save_pdf(htmls, file_name):
@@ -239,6 +259,6 @@ if __name__ == '__main__':
   #创建一把同步锁
   numlock = threading.Lock() 
   listlock= threading.Lock() 
-  start('http://guokunjin.cn',5)
+  start('http://lp.cq.gov.cn',30)
 
 
