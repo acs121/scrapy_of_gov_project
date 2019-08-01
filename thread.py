@@ -21,7 +21,7 @@ prefs = {"profile.managed_default_content_settings.images":2,
 chrome_options.add_experimental_option("prefs",prefs)
 driver = webdriver.Chrome(chrome_options=chrome_options)
 #设置firefox
-profile_directory='rust_mozprofile.cY4kYRxaXVcZ'
+profile_directory='rust_mozprofile.Rd5ZpPzDM8MO'
 profile=webdriver.FirefoxProfile(profile_directory)
 profile.set_preference('browser.download.folderList', 2)
 profile.set_preference('browser.download.dir', os.getcwd())
@@ -98,7 +98,7 @@ def url_filtrate(pagelinks,officialWeb):
     #不要图片、pdf、doc等链接
     pattern3=re.compile("javascript|jpg$|pdf$|doc$|mp3$|png$|xls$|ppt$|zip$|rar$|xml$|css$|js$|gif$|jpeg$|exe$|@|docx$|pptx$",re.I)
     #不要JavaScript字段
-    pattern8=re.compile("javascript|#|2018|2017|2016|2015|2014|2013|2012|2011|2010|2009|2008|2007|2006|2005|2004|2003|/18/|/17/|/16/|/15/|/14/|/13/|/12/|/10/|/11/|/09/|/08/|/07/|/06/|/05/")
+    pattern8=re.compile("javascript|#|2018|2017|2016|2015|2014|2013|2012|2011|2010|2009|2008|2007|2006|2005|2004|2003|/18/|/17/|/16/|/15/|/14/|/13/")
     for link in pagelinks:
       try:
         l=link.get_attribute('href')
@@ -144,13 +144,13 @@ def getPageLink(url,officialWeb):
     for link in right_links:
       linkQuence.put(link)
     #检查页面内容
-    checkPage(driver.page_source,url)
+    checkPage(driver.page_source,url,driver.title)
   except:
     print u"获取页面失败"
 
 
 #页面检查
-def checkPage(pageContent,url):
+def checkPage(pageContent,url,title):
   #匹配主要字段
   param_one=u"县.*?2018年.*?预算执行情况.*?2019年.*?预算|区.*?2018年.*?预算执行情况.*?2019年.*?预算|市.*?2018年.*?预算执行情况.*?2019年.*?预算"
   pattern_one = re.compile(param_one)
@@ -165,16 +165,18 @@ def checkPage(pageContent,url):
   match_four=pattern_four.findall(pageContent)
   if len(match_one)!=0:
       #第一种存在附件
-      if len(match_one)>=2:
-          downloadfile(url)
+      if len(match_one)>=3:
+        if downloadfile(url)==0 and len(match_two)!=0 and len(match_three)!=0:
+          save_pdf(url)
+          os.rename('file.pdf',title+'.pdf')
       elif len(match_two)!=0 and len(match_three)!=0:
           downloadfile(url)
       elif len(match_four)!=0:
-          downloadfile(url)
-      #第二种不存在附件
+        if downloadfile(url)==0 and len(match_two)!=0 and len(match_three)!=0:
+          save_pdf(url)
+          os.rename('file.pdf',title+'.pdf')
       else:
           print u"页面不符合"
-      
   else:
       print u"页面不符合"
 
@@ -193,23 +195,32 @@ def downloadfile(url):
     if pattern_one.search(text)!=None:
       try:
         ActionChains(browser).move_to_element(target).click(target).perform()
+        # time.sleep(10)
+        # browser.quit()
         return 1
       except:
+        print u"下拉到底"
+      try:
         js="var q=document.documentElement.scrollTop=100000"  
         browser.execute_script(js)  
         time.sleep(3)
         ActionChains(browser).move_to_element(target).click(target).perform()
+        # time.sleep(10)
+        # browser.quit()
         return 1
-    else:
-      browser.quit()
+      except:
+        print "44444444444444444444444444444444444444444444444444444444444444"
+  # time.sleep(10)
+  # browser.quit()
+  return 0
 
 #pdf转换
-def save_pdf(htmls, file_name):
+def save_pdf(htmls):
     #添加了环境变量还是搞不成，只有代码找位置
     path_wk = r'D:\wkhtmltox\bin\wkhtmltopdf.exe' #安装位置
     config = pdfkit.configuration(wkhtmltopdf = path_wk)
     try:
-      pdfkit.from_url(htmls, file_name,configuration=config)
+      pdfkit.from_url(htmls, 'file.pdf',configuration=config)
     except:
       print u"pdf转换有问题"
 
