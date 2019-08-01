@@ -96,9 +96,9 @@ def url_filtrate(pagelinks,officialWeb):
     pattern6=re.compile('[a-z]',re.I)
     pattern7=re.compile('http',re.I)
     #不要图片、pdf、doc等链接
-    pattern3=re.compile("javascript|jpg|pdf|doc|mp3|png|xls|ppt|zip|rar|xml|css|js|gif|jpeg",re.I)
+    pattern3=re.compile("javascript|jpg$|pdf$|doc$|mp3$|png$|xls$|ppt$|zip$|rar$|xml$|css$|js$|gif$|jpeg$|exe$|@|docx$|pptx$",re.I)
     #不要JavaScript字段
-    pattern8=re.compile("javascript|#|2018|2017|2016|2015|2014|2013|2012|2011|2010|2009|2008|2007|2006|2005|2004|2003")
+    pattern8=re.compile("javascript|#|2018|2017|2016|2015|2014|2013|2012|2011|2010|2009|2008|2007|2006|2005|2004|2003|/18/|/17/|/16/|/15/|/14/|/13/|/12/|/10/|/11/|/09/|/08/|/07/|/06/|/05/")
     for link in pagelinks:
       try:
         l=link.get_attribute('href')
@@ -132,11 +132,10 @@ def url_filtrate(pagelinks,officialWeb):
 
 
 #链接搜索
-@timelimited(15)
 def getPageLink(url,officialWeb):
   try:
     #隐性等待
-    driver.implicitly_wait(5)
+    driver.implicitly_wait(15)
     driver.get(url)
     #获取官网页面的链接并格式化链接
     initial_links=driver.find_elements_by_tag_name("a")
@@ -146,7 +145,6 @@ def getPageLink(url,officialWeb):
       linkQuence.put(link)
     #检查页面内容
     checkPage(driver.page_source,url)
-    
   except:
     print u"获取页面失败"
 
@@ -166,14 +164,17 @@ def checkPage(pageContent,url):
   pattern_four=re.compile(u"预.*?算信息公开|预.*?算公开信息")
   match_four=pattern_four.findall(pageContent)
   if len(match_one)!=0:
+      #第一种存在附件
       if len(match_one)>=2:
           downloadfile(url)
       elif len(match_two)!=0 and len(match_three)!=0:
           downloadfile(url)
       elif len(match_four)!=0:
           downloadfile(url)
+      #第二种不存在附件
       else:
           print u"页面不符合"
+      
   else:
       print u"页面不符合"
 
@@ -192,11 +193,15 @@ def downloadfile(url):
     if pattern_one.search(text)!=None:
       try:
         ActionChains(browser).move_to_element(target).click(target).perform()
+        return 1
       except:
         js="var q=document.documentElement.scrollTop=100000"  
         browser.execute_script(js)  
         time.sleep(3)
         ActionChains(browser).move_to_element(target).click(target).perform()
+        return 1
+    else:
+      browser.quit()
 
 #pdf转换
 def save_pdf(htmls, file_name):
@@ -259,6 +264,6 @@ if __name__ == '__main__':
   #创建一把同步锁
   numlock = threading.Lock() 
   listlock= threading.Lock() 
-  start('http://lp.cq.gov.cn',30)
+  start('http://www.day.gov.cn',30)
 
 
