@@ -21,7 +21,7 @@ prefs = {"profile.managed_default_content_settings.images":2,
 chrome_options.add_experimental_option("prefs",prefs)
 driver = webdriver.Chrome(chrome_options=chrome_options)
 #设置firefox
-profile_directory='rust_mozprofile.Rd5ZpPzDM8MO'
+profile_directory='rust_mozprofile.p0ku2nHQI68s'
 profile=webdriver.FirefoxProfile(profile_directory)
 profile.set_preference('browser.download.folderList', 2)
 profile.set_preference('browser.download.dir', os.getcwd())
@@ -96,7 +96,7 @@ def url_filtrate(pagelinks,officialWeb):
     pattern6=re.compile('[a-z]',re.I)
     pattern7=re.compile('http',re.I)
     #不要图片、pdf、doc等链接
-    pattern3=re.compile("javascript|jpg$|pdf$|doc$|mp3$|png$|xls$|ppt$|zip$|rar$|xml$|css$|js$|gif$|jpeg$|exe$|@|docx$|pptx$",re.I)
+    pattern3=re.compile("javascript|jpg$|pdf$|doc$|mp3$|png$|xls$|ppt$|zip$|rar$|xml$|css$|js$|gif$|jpeg$|exe$|@|docx$|pptx$|xlsx$",re.I)
     #不要JavaScript字段
     pattern8=re.compile("javascript|#|2018|2017|2016|2015|2014|2013|2012|2011|2010|2009|2008|2007|2006|2005|2004|2003|/18/|/17/|/16/|/15/|/14/|/13/")
     for link in pagelinks:
@@ -152,38 +152,34 @@ def getPageLink(url,officialWeb):
 #页面检查
 def checkPage(pageContent,url,title):
   #匹配主要字段
-  param_one=u"县.*?2018年.*?预算执行情况.*?2019年.*?预算|区.*?2018年.*?预算执行情况.*?2019年.*?预算|市.*?2018年.*?预算执行情况.*?2019年.*?预算"
+  param_one=u"县.*?2018年.*?预算执行.*?2019年.*?预算|区.*?2018年.*?预算执行.*?2019年.*?预算|市.*?2018年.*?预算执行.*?2019年.*?预算"
   pattern_one = re.compile(param_one)
   match_one=pattern_one.findall(pageContent)
   #主要字段只有一次，匹配更多字段
   pattern_two=re.compile(u"一般公共预算")
   match_two=pattern_two.findall(pageContent)
-  pattern_three=re.compile(u"预算草案")
-  match_three=pattern_three.findall(pageContent)
   #匹配信息公开类型
   pattern_four=re.compile(u"预.*?算信息公开|预.*?算公开信息")
   match_four=pattern_four.findall(pageContent)
-  if len(match_one)!=0:
-      #第一种存在附件
-      if len(match_one)>=3:
-        if downloadfile(url)==0 and len(match_two)!=0 and len(match_three)!=0:
-          save_pdf(url)
-          os.rename('file.pdf',title+'.pdf')
-      elif len(match_two)!=0 and len(match_three)!=0:
-          downloadfile(url)
-      elif len(match_four)!=0:
-        if downloadfile(url)==0 and len(match_two)!=0 and len(match_three)!=0:
-          save_pdf(url)
-          os.rename('file.pdf',title+'.pdf')
+  #如果页面出现两次匹配先寻找下载目标
+  if len(match_one)>=2:
+    if downloadfile(url)==0:
+      if len(match_two)!=0:
+        save_pdf(url)
+        os.rename('file.pdf',title+'.pdf')
       else:
-          print u"页面不符合"
+        print u"页面不符合"
+  #这种页面只有标题，直接找
+  elif len(match_four)!=0 and len(match_one)!=0:
+    if downloadfile(url)==0:
+      print u"页面不符合"
   else:
       print u"页面不符合"
 
 #firefox下载
 def downloadfile(url):
   #匹配主要字段
-  param_one=u"县.*?2018年.*?预算执行情况.*?2019年.*?预算|区.*?2018年.*?预算执行情况.*?2019年.*?预算|市.*?2018年.*?预算执行情况.*?2019年.*?预算"
+  param_one=u"县.*?2018年.*?预算执行.*?2019年.*?预算|区.*?2018年.*?预算执行.*?2019年.*?预算|市.*?2018年.*?预算执行.*?2019年.*?预算"
   pattern_one = re.compile(param_one)
   browser = webdriver.Firefox(profile,executable_path="geckodriver.exe",firefox_binary="Mozilla Firefox/firefox.exe")
   #隐性等待
@@ -195,8 +191,6 @@ def downloadfile(url):
     if pattern_one.search(text)!=None:
       try:
         ActionChains(browser).move_to_element(target).click(target).perform()
-        # time.sleep(10)
-        # browser.quit()
         return 1
       except:
         print u"下拉到底"
@@ -205,13 +199,9 @@ def downloadfile(url):
         browser.execute_script(js)  
         time.sleep(3)
         ActionChains(browser).move_to_element(target).click(target).perform()
-        # time.sleep(10)
-        # browser.quit()
         return 1
       except:
-        print "44444444444444444444444444444444444444444444444444444444444444"
-  # time.sleep(10)
-  # browser.quit()
+        print "继续第二种方式"
   return 0
 
 #pdf转换
@@ -240,10 +230,6 @@ def Spider(officialWeb):
         except:
           continue
   except:
-    fo = open("url.txt", "w+")
-    for link in visitedLink:
-      fo.writelines(link+'\n')
-    fo.close()
     print u"链接访问结束"
 
 #多线程爬虫
@@ -254,6 +240,7 @@ def threadSpider(number,officialWeb):
     t.join()
 
 def start(url,number):
+  #创建文件夹
   startTime = time.clock()
   try:
     driver.implicitly_wait(5)
@@ -267,6 +254,10 @@ def start(url,number):
     linkQuence.put(link)
   #设置线程数和启动多线程
   threadSpider(number,url)
+  fo = open("url.txt", "w+")
+  for link in visitedLink:
+    fo.writelines(link+'\n')
+  fo.close()
   elapsed = (time.clock() - startTime)
   print("Time used:",elapsed)
   driver.quit()
@@ -274,7 +265,7 @@ def start(url,number):
 if __name__ == '__main__':
   #创建一把同步锁
   numlock = threading.Lock() 
-  listlock= threading.Lock() 
-  start('http://www.day.gov.cn',30)
+  listlock= threading.Lock()
+  start('http://www.gj.gov.cn',30)
 
 
