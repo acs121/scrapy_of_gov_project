@@ -41,6 +41,9 @@ def addnum():
   print (u"正在访问第 %d 个页面" %num)
   numlock.release()
 
+#翻页数目和翻页等待时间
+pagenum=10
+sleepNum=1
 #访问过的链接列表
 visitedLink=[]
 def addLinkToList(url):
@@ -100,14 +103,14 @@ def url_filtrate(pagelinks,officialWeb):
     #不要图片、pdf、doc等链接
     pattern3=re.compile("javascript|jpg$|pdf$|doc$|mp3$|png$|xls$|ppt$|zip$|rar$|xml$|css$|\.js$|gif$|jpeg$|exe$|@|docx$|pptx$|xlsx$|mp4$",re.I)
     #不要JavaScript字段
-    pattern8=re.compile("javascript|#|2018|2017|2016|2015|2014|2013|2012|2011|2010|2009|2008|2007|2006|2005|2004|2003|down",re.I)
+    pattern8=re.compile("javascript|#|down",re.I)
     #匹配链接文本内容
     pattern9=re.compile("公告|财政|预算|信息|公开|更多|决算|进入|资金")
     #文本只有数字的链接不要
     pattern10=re.compile('^\d+$')
     #通过保存一个合格链接
     pattern11=re.compile(u"2018.*?预算执行.*?2019.*?预算")
-    pattern12=re.compile(u'镇|乡|局|学|校|会|馆|委|院|室|街')
+    pattern12=re.compile(u'镇|乡|局|学|校|会|馆|委|院|室|街|2017|2016|2015|2014|2013|2012')
     for link in pagelinks:
       try:
         htmltext=link.get_attribute("innerHTML")
@@ -161,11 +164,18 @@ def is_first_page(pageContent):
   pattern2=re.compile(u"首页")
   pattern3=re.compile(u"尾页|末页")
   pattern4=re.compile(u"预算|决算")
+  #处理>>/>
+  pattern5=re.compile("&gt")
+  pattern6=re.compile("&lt")
   if pattern4.search(pageContent)!=None:
     if pattern1.search(pageContent)!=None and pattern2.search(pageContent)!=None and pattern3.search(pageContent)!=None:
       return 1
     elif pattern1.search(pageContent)==None and pattern2.search(pageContent)!=None and pattern3.search(pageContent)!=None:
       return 2
+    elif pattern5.search(pageContent)!=None and pattern6.search(pageContent)!=None:
+      return 3
+    else:
+      return 0
   else:
     return 0
 
@@ -205,7 +215,7 @@ def judge_label(judge_driver):
 #在分页表格点击目标链接
 def click_link(linkObject,driver):
   pattern1=re.compile(u"2018.*?预算执行.*?2019.*?预算")
-  pattern2=re.compile(u'镇|乡|部|局|学|校|会|馆|委|院|室|街')
+  pattern2=re.compile(u'镇|乡|部|局|学|校|会|馆|委|院|室|街|2017|2016|2015|2014|2013|2012')
   for target in linkObject:
     text=target.get_attribute("innerHTML")
     if pattern1.search(text)!=None and pattern2.search(text)==None:
@@ -216,16 +226,21 @@ def click_link(linkObject,driver):
 def get_table_list(newdriver,officialWeb):
   print u"有第一类大表格，可能很慢"
   time.sleep(1)
+  #存储当前表格链接
+  pageText=''
   #链接临时存储
   link_list=[]
   pattern1=re.compile(u"下一页|下页|后页")
-  pagenum=20
   #a标签处理
   if judge_label(newdriver)==1:
     #设置下一页的次数
     for i in range(pagenum):
       #页面刷新了获取新元素需等新时间
-      time.sleep(3)
+      time.sleep(sleepNum)
+      if pageText!=driver.current_url:
+        pageText=driver.current_url
+      else:
+        return link_list
       initial_links=driver.find_elements_by_tag_name("a")
       page_list=url_filtrate(initial_links,officialWeb)
       #在分页中点击
@@ -259,7 +274,11 @@ def get_table_list(newdriver,officialWeb):
     #设置下一页的次数
     for i in range(pagenum):
       #页面刷新了获取新元素需等新时间
-      time.sleep(3)
+      time.sleep(sleepNum)
+      if pageText!=driver.current_url:
+        pageText=driver.current_url
+      else:
+        return link_list
       initial_links=driver.find_elements_by_tag_name("a")
       p_links=driver.find_elements_by_tag_name("p")
       page_list=url_filtrate(initial_links,officialWeb)
@@ -293,7 +312,11 @@ def get_table_list(newdriver,officialWeb):
     #设置下一页的次数
     for i in range(pagenum):
       #页面刷新了获取新元素需等新时间
-      time.sleep(3)
+      time.sleep(sleepNum)
+      if pageText!=driver.current_url:
+        pageText=driver.current_url
+      else:
+        return link_list
       initial_links=driver.find_elements_by_tag_name("a")
       span_links=driver.find_elements_by_tag_name("span")
       page_list=url_filtrate(initial_links,officialWeb)
@@ -326,7 +349,11 @@ def get_table_list(newdriver,officialWeb):
     #设置下一页的次数
     for i in range(pagenum):
       #页面刷新了获取新元素需等新时间
-      time.sleep(3)
+      time.sleep(sleepNum)
+      if pageText!=driver.current_url:
+        pageText=driver.current_url
+      else:
+        return link_list
       initial_links=driver.find_elements_by_tag_name("a")
       div_links=driver.find_elements_by_xpath("//td/div")
       page_list=url_filtrate(initial_links,officialWeb)
@@ -404,7 +431,7 @@ def get_num_links(newdriver,officialWeb):
   #根据页码遍历每一个
   try:
     for i in range(num):
-      time.sleep(3)
+      time.sleep(sleepNum)
       a_links=newdriver.find_elements_by_tag_name("a")
       right_link=url_filtrate(a_links,officialWeb)
       for link in right_link:
@@ -419,6 +446,51 @@ def get_num_links(newdriver,officialWeb):
           break
   except:
     return list_links
+  return list_links
+
+#当分页表格按钮是>>/<<,>/<时
+def get_arrow_link(newdriver,officialWeb):
+  print u"有第三类大表格，可能很慢"
+  pageUrl=''
+  initial_links=newdriver.find_elements_by_tag_name("a")
+  list_links =[]
+  pattern1=re.compile("&gt")
+  #设置下一页的次数
+  for i in range(pagenum):
+    if pageUrl!=newdriver.current_url:
+      pageUrl=newdriver.current_url
+    else:
+      return list_links
+    #页面刷新了获取新元素需等新时间
+    time.sleep(sleepNum)
+    initial_links=newdriver.find_elements_by_tag_name("a")
+    right_list=url_filtrate(initial_links,officialWeb)
+    try:
+      click_link(initial_links,newdriver)
+    except:
+      print u"点击元素不在当前窗口"
+    #第一页放进去
+    for link in right_list:
+      if link not in list_links:
+        list_links.append(link)
+    try:
+      count=0
+      for target in initial_links:
+        try:
+          #找到下一页按钮点击
+          text=target.get_attribute("innerHTML")
+          if pattern1.search(text)!=None:
+            js="var q=document.documentElement.scrollTop=20000"
+            newdriver.execute_script(js)
+            ActionChains(newdriver).move_to_element(target).click(target).perform()
+          else:
+            count+=1
+          if count==len(initial_links):
+            return list_links
+        except:
+            break
+    except:
+      break
   return list_links
 
 
@@ -443,6 +515,18 @@ def getPageLink(url,officialWeb):
     elif is_first_page(driver.page_source)==2:
       try:
         right_links=get_num_links(driver,officialWeb)
+        for link in right_links:
+          linkQuence.put(link)
+      except:
+        #获取官网页面的链接并格式化链接
+        initial_links=driver.find_elements_by_tag_name("a")
+        right_links = url_filtrate(initial_links,officialWeb)
+        #放入队列中
+        for link in right_links:
+          linkQuence.put(link)
+    elif is_first_page(driver.page_source)==3:
+      try:
+        right_links=get_arrow_link(driver,officialWeb)
         for link in right_links:
           linkQuence.put(link)
       except:
@@ -479,7 +563,7 @@ def checkPage(pageContent,url,title):
   pattern_five=re.compile(u"政府性基金")
   match_five=pattern_five.findall(pageContent)
   #从title中筛选掉不要的页面
-  pattern_three=re.compile(u"镇|乡|部|局|学|校|会|馆|委|院|室")
+  pattern_three=re.compile(u"镇|乡|部|局|学|校|会|馆|委|院|室|街|2017|2016|2015|2014|2013|2012")
   match_three=pattern_three.search(title)
   #匹配信息公开类型
   pattern_four=re.compile(u"2019.*?预.*?算信息公开|2019.*?预.*?算公开信息")
@@ -491,6 +575,9 @@ def checkPage(pageContent,url,title):
         if os.path.exists(title+'.pdf')==False:
           save_pdf(url)
           os.rename('file.pdf',title+'.pdf')
+        else:
+          save_pdf(url)
+          os.rename('file.pdf',title+str(num)+'.pdf')
       elif url in right_url:
           save_pdf(url)
           os.rename('file.pdf',title+'.pdf')
@@ -511,7 +598,7 @@ def downloadfile(url):
   param_three=u"2019.*?预算.*?草案|2019.*?预算.*?报告"
   pattern_three = re.compile(param_three)
   #不包括字段
-  param_two=u"镇|乡|部|局|学|校|会|馆|委|院"
+  param_two=u"镇|乡|部|局|学|校|会|馆|委|院|室|街|2017|2016|2015|2014|2013|2012"
   pattern_two = re.compile(param_two)
   browser = webdriver.Firefox(profile,executable_path="geckodriver.exe",firefox_binary="Mozilla Firefox/firefox.exe")
   #隐性等待
@@ -519,7 +606,6 @@ def downloadfile(url):
   browser.get(url)
   target_list=browser.find_elements_by_tag_name("a")
   #记录是否发生点击事件
-  count=0
   for target in target_list:
     text=target.get_attribute('textContent')
     if pattern_two.search(text)==None:
@@ -532,14 +618,10 @@ def downloadfile(url):
             js="var q=document.documentElement.scrollTop="+str(num)
             browser.execute_script(js)
             ActionChains(browser).move_to_element(target).click(target).perform()
-            count+=1
             break
           except: 
             num+=1000
-  if count!=0:
-    return 1
-  else:
-    return 0
+  return 0
 
 #pdf转换
 def save_pdf(htmls):
@@ -579,7 +661,6 @@ def threadSpider(number,officialWeb):
 
 def start(url,number):
   #创建文件夹
-
   startTime = time.clock()
   try:
     driver.implicitly_wait(10)
@@ -606,6 +687,6 @@ if __name__ == '__main__':
   numlock = threading.Lock() 
   listlock= threading.Lock()
   right_url_lock=threading.Lock()
-  start('http://www.cqwx.gov.cn',30)
+  start('http://xxgk.scnj.gov.cn',30)
 
 
