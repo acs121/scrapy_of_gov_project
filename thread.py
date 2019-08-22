@@ -42,8 +42,8 @@ def addnum():
   numlock.release()
 
 #翻页数目和翻页等待时间
-pagenum=10
-sleepNum=1
+pagenum=15
+sleepNum=2
 #访问过的链接列表
 visitedLink=[]
 def addLinkToList(url):
@@ -101,7 +101,7 @@ def url_filtrate(pagelinks,officialWeb):
     pattern6=re.compile('[a-z]',re.I)
     pattern7=re.compile('http',re.I)
     #不要图片、pdf、doc等链接
-    pattern3=re.compile("javascript|jpg$|pdf$|doc$|mp3$|png$|xls$|ppt$|zip$|rar$|xml$|css$|\.js$|gif$|jpeg$|exe$|@|docx$|pptx$|xlsx$|mp4$",re.I)
+    pattern3=re.compile("javascript|jpg$|pdf$|doc$|mp3$|png$|xls$|ppt$|zip$|rar$|xml$|css$|\.js$|gif$|jpeg$|exe$|@|docx$|pptx$|xlsx$|mp4$|docm$",re.I)
     #不要JavaScript字段
     pattern8=re.compile("javascript|#|down",re.I)
     #匹配链接文本内容
@@ -109,7 +109,7 @@ def url_filtrate(pagelinks,officialWeb):
     #文本只有数字的链接不要
     pattern10=re.compile('^\d+$')
     #通过保存一个合格链接
-    pattern11=re.compile(u"2018.*?预算执行.*?2019.*?预算")
+    pattern11=re.compile(u"2018.*?执行.*?2019.*?预算")
     pattern12=re.compile(u'镇|乡|局|学|校|会|馆|委|院|室|街|2017|2016|2015|2014|2013|2012')
     for link in pagelinks:
       try:
@@ -162,15 +162,14 @@ def url_filtrate(pagelinks,officialWeb):
 def is_first_page(pageContent):
   pattern1=re.compile(u"下一页|下页|后页")
   pattern2=re.compile(u"首页")
-  pattern3=re.compile(u"尾页|末页")
   pattern4=re.compile(u"预算|决算")
   #处理>>/>
   pattern5=re.compile("&gt")
   pattern6=re.compile("&lt")
   if pattern4.search(pageContent)!=None:
-    if pattern1.search(pageContent)!=None and pattern2.search(pageContent)!=None and pattern3.search(pageContent)!=None:
+    if pattern1.search(pageContent)!=None and pattern2.search(pageContent)!=None:
       return 1
-    elif pattern1.search(pageContent)==None and pattern2.search(pageContent)!=None and pattern3.search(pageContent)!=None:
+    elif pattern1.search(pageContent)==None and pattern2.search(pageContent)!=None:
       return 2
     elif pattern5.search(pageContent)!=None and pattern6.search(pageContent)!=None:
       return 3
@@ -214,7 +213,7 @@ def judge_label(judge_driver):
 
 #在分页表格点击目标链接
 def click_link(linkObject,driver):
-  pattern1=re.compile(u"2018.*?预算执行.*?2019.*?预算")
+  pattern1=re.compile(u"2018.*?执行.*?2019.*?预算")
   pattern2=re.compile(u'镇|乡|部|局|学|校|会|馆|委|院|室|街|2017|2016|2015|2014|2013|2012')
   for target in linkObject:
     text=target.get_attribute("innerHTML")
@@ -227,7 +226,7 @@ def get_table_list(newdriver,officialWeb):
   print u"有第一类大表格，可能很慢"
   time.sleep(1)
   #存储当前表格链接
-  pageText=''
+  pageLen=0
   #链接临时存储
   link_list=[]
   pattern1=re.compile(u"下一页|下页|后页")
@@ -237,8 +236,8 @@ def get_table_list(newdriver,officialWeb):
     for i in range(pagenum):
       #页面刷新了获取新元素需等新时间
       time.sleep(sleepNum)
-      if pageText!=driver.current_url:
-        pageText=driver.current_url
+      if pageLen!=len(driver.page_source.encode('GB18030')):
+        pageLen=len(driver.page_source.encode('GB18030'))
       else:
         return link_list
       initial_links=driver.find_elements_by_tag_name("a")
@@ -275,8 +274,8 @@ def get_table_list(newdriver,officialWeb):
     for i in range(pagenum):
       #页面刷新了获取新元素需等新时间
       time.sleep(sleepNum)
-      if pageText!=driver.current_url:
-        pageText=driver.current_url
+      if pageLen!=len(driver.page_source.encode('GB18030')):
+        pageLen=len(driver.page_source.encode('GB18030'))
       else:
         return link_list
       initial_links=driver.find_elements_by_tag_name("a")
@@ -313,8 +312,8 @@ def get_table_list(newdriver,officialWeb):
     for i in range(pagenum):
       #页面刷新了获取新元素需等新时间
       time.sleep(sleepNum)
-      if pageText!=driver.current_url:
-        pageText=driver.current_url
+      if pageLen!=len(driver.page_source.encode('GB18030')):
+        pageLen=len(driver.page_source.encode('GB18030'))
       else:
         return link_list
       initial_links=driver.find_elements_by_tag_name("a")
@@ -350,8 +349,8 @@ def get_table_list(newdriver,officialWeb):
     for i in range(pagenum):
       #页面刷新了获取新元素需等新时间
       time.sleep(sleepNum)
-      if pageText!=driver.current_url:
-        pageText=driver.current_url
+      if pageLen!=len(driver.page_source.encode('GB18030')):
+        pageLen=len(driver.page_source.encode('GB18030'))
       else:
         return link_list
       initial_links=driver.find_elements_by_tag_name("a")
@@ -451,14 +450,14 @@ def get_num_links(newdriver,officialWeb):
 #当分页表格按钮是>>/<<,>/<时
 def get_arrow_link(newdriver,officialWeb):
   print u"有第三类大表格，可能很慢"
-  pageUrl=''
+  pageUrl=0
   initial_links=newdriver.find_elements_by_tag_name("a")
   list_links =[]
   pattern1=re.compile("&gt")
   #设置下一页的次数
   for i in range(pagenum):
-    if pageUrl!=newdriver.current_url:
-      pageUrl=newdriver.current_url
+    if pageUrl!=len(driver.page_source.encode('GB18030')):
+        pageUrl=len(driver.page_source.encode('GB18030'))
     else:
       return list_links
     #页面刷新了获取新元素需等新时间
@@ -543,10 +542,10 @@ def getPageLink(url,officialWeb):
       #放入队列中
       for link in right_links:
         linkQuence.put(link)
-    #检查页面内容
-    click_url=clicked_get_link(url,driver)
-    if click_url!=0:
-      linkQuence.put(click_url)
+    # #检查页面内容
+    # click_url=clicked_get_link(url,driver)
+    # if click_url!=0:
+    #   linkQuence.put(click_url)
     checkPage(driver.page_source,url,driver.title)
   except:
     print u"获取页面失败"
@@ -554,7 +553,7 @@ def getPageLink(url,officialWeb):
 #页面检查
 def checkPage(pageContent,url,title):
   #匹配主要字段
-  param_one=u"2018.*?预算执行.*?2019.*?预算"
+  param_one=u"2018.*?执行.*?2019.*?预算"
   pattern_one = re.compile(param_one)
   match_one=pattern_one.findall(pageContent)
   #主要字段只有一次，匹配更多字段
@@ -593,7 +592,7 @@ def checkPage(pageContent,url,title):
 #firefox下载
 def downloadfile(url):
   #匹配主要字段
-  param_one=u"2018.*?预算执行.*?2019.*?预算"
+  param_one=u"2018.*?执行.*?2019.*?预算"
   pattern_one = re.compile(param_one)
   param_three=u"2019.*?预算.*?草案|2019.*?预算.*?报告"
   pattern_three = re.compile(param_three)
@@ -607,7 +606,7 @@ def downloadfile(url):
   target_list=browser.find_elements_by_tag_name("a")
   #记录是否发生点击事件
   for target in target_list:
-    text=target.get_attribute('textContent')
+    text=target.get_attribute('innerHTML')
     if pattern_two.search(text)==None:
       if pattern_one.search(text)!=None or pattern_three.search(text)!=None:
         #在页面找
@@ -687,6 +686,6 @@ if __name__ == '__main__':
   numlock = threading.Lock() 
   listlock= threading.Lock()
   right_url_lock=threading.Lock()
-  start('http://xxgk.scnj.gov.cn',30)
+  start('http://www.scnjdx.gov.cn',30)
 
 
