@@ -599,11 +599,11 @@ def downloadfile(url):
   #不包括字段
   param_two=u"镇|乡|部|局|学|校|会|馆|委|院|室|街|2017|2016|2015|2014|2013|2012"
   pattern_two = re.compile(param_two)
-  browser = webdriver.Firefox(profile,executable_path="geckodriver.exe",firefox_binary="Mozilla Firefox/firefox.exe")
+  # browser = webdriver.Firefox(profile,executable_path="geckodriver.exe",firefox_binary="Mozilla Firefox/firefox.exe")
   #隐性等待
-  browser.implicitly_wait(3)
-  browser.get(url)
-  target_list=browser.find_elements_by_tag_name("a")
+  # browser.implicitly_wait(3)
+  driver.get(url)
+  target_list=driver.find_elements_by_tag_name("a")
   #记录是否发生点击事件
   for target in target_list:
     text=target.get_attribute('innerHTML')
@@ -615,8 +615,8 @@ def downloadfile(url):
           try:
             time.sleep(0.2)
             js="var q=document.documentElement.scrollTop="+str(num)
-            browser.execute_script(js)
-            ActionChains(browser).move_to_element(target).click(target).perform()
+            driver.execute_script(js)
+            ActionChains(driver).move_to_element(target).click(target).perform()
             break
           except: 
             num+=1000
@@ -686,6 +686,9 @@ if __name__ == '__main__':
   numlock = threading.Lock() 
   listlock= threading.Lock()
   right_url_lock=threading.Lock()
-  start('http://www.scnjdx.gov.cn',30)
+  fopen= open("countyurl.txt", "r+")
+  line = fopen.readlines()
+  for countyurl in line: 
+    start(countyurl,30)
 
 
