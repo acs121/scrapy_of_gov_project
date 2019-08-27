@@ -21,6 +21,7 @@ profile.set_preference('browser.helperApps.neverAsk.saveToDisk', 'application/zi
 profile_options=webdriver.FirefoxOptions()
 profile_options.add_argument('-headless')
 driver=webdriver.Firefox(profile,executable_path="geckodriver.exe",firefox_binary="Mozilla Firefox/firefox.exe")
+browser = webdriver.Firefox(profile,executable_path="geckodriver.exe",firefox_binary="Mozilla Firefox/firefox.exe")
 
 #链接队列
 linkQuence=Queue.Queue()
@@ -103,7 +104,7 @@ def url_filtrate(pagelinks,officialWeb):
     #不要图片、pdf、doc等链接
     pattern3=re.compile("javascript|jpg$|pdf$|doc$|mp3$|png$|xls$|ppt$|zip$|rar$|xml$|css$|\.js$|gif$|jpeg$|exe$|@|docx$|pptx$|xlsx$|mp4$|docm$",re.I)
     #不要JavaScript字段
-    pattern8=re.compile("javascript|#|down",re.I)
+    pattern8=re.compile("javascript|#$|down",re.I)
     #匹配链接文本内容
     pattern9=re.compile("公告|财政|预算|信息|公开|更多|决算|进入|资金")
     #文本只有数字的链接不要
@@ -162,6 +163,7 @@ def url_filtrate(pagelinks,officialWeb):
 def is_first_page(pageContent):
   pattern1=re.compile(u"下一页|下页|后页")
   pattern2=re.compile(u"首页")
+  pattern3=re.compile(u"尾页|末页")
   pattern4=re.compile(u"预算|决算")
   #处理>>/>
   pattern5=re.compile("&gt")
@@ -169,7 +171,7 @@ def is_first_page(pageContent):
   if pattern4.search(pageContent)!=None:
     if pattern1.search(pageContent)!=None and pattern2.search(pageContent)!=None:
       return 1
-    elif pattern1.search(pageContent)==None and pattern2.search(pageContent)!=None:
+    elif pattern1.search(pageContent)==None and pattern2.search(pageContent)!=None and pattern3.search(pageContent)!=None:
       return 2
     elif pattern5.search(pageContent)!=None and pattern6.search(pageContent)!=None:
       return 3
@@ -565,7 +567,7 @@ def checkPage(pageContent,url,title):
   pattern_three=re.compile(u"镇|乡|部|局|学|校|会|馆|委|院|室|街|2017|2016|2015|2014|2013|2012")
   match_three=pattern_three.search(title)
   #匹配信息公开类型
-  pattern_four=re.compile(u"2019.*?预.*?算信息公开|2019.*?预.*?算公开信息")
+  pattern_four=re.compile(u"2019.*?预.*?算信息公开|2019.*?预.*?算公开信息|2019.*?政府预算")
   match_four=pattern_four.findall(pageContent)
   #如果页面出现两次匹配先寻找下载目标
   if len(match_one)>=1:
@@ -599,11 +601,11 @@ def downloadfile(url):
   #不包括字段
   param_two=u"镇|乡|部|局|学|校|会|馆|委|院|室|街|2017|2016|2015|2014|2013|2012"
   pattern_two = re.compile(param_two)
-  # browser = webdriver.Firefox(profile,executable_path="geckodriver.exe",firefox_binary="Mozilla Firefox/firefox.exe")
-  #隐性等待
-  # browser.implicitly_wait(3)
-  driver.get(url)
-  target_list=driver.find_elements_by_tag_name("a")
+  
+  # 隐性等待
+  browser.implicitly_wait(3)
+  browser.get(url)
+  target_list=browser.find_elements_by_tag_name("a")
   #记录是否发生点击事件
   for target in target_list:
     text=target.get_attribute('innerHTML')
@@ -615,8 +617,8 @@ def downloadfile(url):
           try:
             time.sleep(0.2)
             js="var q=document.documentElement.scrollTop="+str(num)
-            driver.execute_script(js)
-            ActionChains(driver).move_to_element(target).click(target).perform()
+            browser.execute_script(js)
+            ActionChains(browser).move_to_element(target).click(target).perform()
             break
           except: 
             num+=1000
@@ -673,6 +675,7 @@ def start(url,number):
     linkQuence.put(link)
   # 设置线程数和启动多线程
   threadSpider(number,url)
+  #将访问过的链接写入txt中
   fo = open("url.txt", "w+")
   for link in visitedLink:
     fo.writelines(link+'\n')
@@ -680,15 +683,21 @@ def start(url,number):
   elapsed = (time.clock() - startTime)
   print("Time used:",elapsed)
   driver.quit()
-
+  browser.quit()
+  
+  
 if __name__ == '__main__':
   #创建一把同步锁
   numlock = threading.Lock() 
   listlock= threading.Lock()
   right_url_lock=threading.Lock()
-  fopen= open("countyurl.txt", "r+")
-  line = fopen.readlines()
-  for countyurl in line: 
-    start(countyurl,30)
+  # fopen= open("countyurl.txt", "r+")
+  # line = fopen.readlines()
+  start("https://www.shbsq.gov.cn",30)
+  # for countyurl in line: 
+  #   countyurl=countyurl.strip("\n")
+  #   start(countyurl,30)
+  # driver.quit()
+  # browser.quit()
 
 
